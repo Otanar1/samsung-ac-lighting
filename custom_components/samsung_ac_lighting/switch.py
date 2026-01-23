@@ -18,12 +18,8 @@ async def async_setup_entry(hass, entry, add_entities):
 
 
 class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
-    # Isso garante que o ID seja gerado como switch.nome_do_dispositivo_led
     _attr_has_entity_name = True
-    
-    # O nome curto da entidade. Na UI aparecerá "Ar-condicionado da Sala Superior LED"
     _attr_name = "LED"
-    
     _attr_icon = "mdi:led-on"
 
     def __init__(self, coordinator, entry):
@@ -32,26 +28,52 @@ class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
         self._device_id = entry.data[CONF_DEVICE_ID]
         self._device_name = entry.data[CONF_DEVICE_NAME]
         
-        # Unique ID garante que você possa editar a entidade na UI, mas não define o entity_id
         self._attr_unique_id = f"{self._device_id}_lighting"
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Informações baseadas no seu RAW data."""
+        """Retorna informações dinâmicas do dispositivo."""
+        
+        # Tenta pegar os dados do coordinator (cache da API)
+        # Estrutura baseada no RAW.txt enviado
+        data = self.coordinator.data or {}
+        components = data.get("components", {})
+        main = components.get("main", {})
+
+        # Tenta buscar Fabricante (ocf -> mnmn)
+        manufacturer = (
+            main.get("ocf", {})
+            .get("mnmn", {})
+            .get("value", "Samsung") # Valor padrão se falhar
+        )
+
+        # Tenta buscar Modelo. 
+        # No seu RAW, 'modelName' é null, então usamos 'description' como principal
+        device_id_data = main.get("samsungce.deviceIdentification", {})
+        model = device_id_data.get("description", {}).get("value")
+        
+        if not model:
+            # Fallback se description também for nulo
+            model = device_id_data.get("modelName", {}).get("value", "Samsung AC")
+
+        # Tenta buscar Firmware (ocf -> mnfv)
+        sw_version = (
+            main.get("ocf", {})
+            .get("mnfv", {})
+            .get("value")
+        )
+
         return DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
-            name=self._device_name, # "Ar-condicionado da Sala Superior" 
-            manufacturer="Samsung Electronics", # 
-            # Pegando o modelo exato do RAW data
-            model="TP1X_DA-AC-RAC-01001", # [cite: 6]
-            # Opcional: Versão do firmware
-            sw_version="ARA-WW-TP1-24-ARXX00_11240611", # [cite: 3]
+            name=self._device_name,
+            manufacturer=manufacturer,
+            model=model,
+            sw_version=sw_version,
         )
 
     @property
     def is_on(self):
         try:
-            # Caminho verificado no RAW: components -> main -> samsungce.airConditionerLighting -> lighting -> value [cite: 95, 96]
             return (
                 self.coordinator.data["components"]["main"]
                 ["samsungce.airConditionerLighting"]
