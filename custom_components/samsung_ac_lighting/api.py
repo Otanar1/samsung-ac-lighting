@@ -46,5 +46,22 @@ class SmartThingsAPI:
         async with session.post(url, headers=self._headers, json=payload) as resp:
             resp.raise_for_status()
 
+    async def set_auto_clean(self, session, device_id, state):
+        url = f"{SMARTTHINGS_API_BASE}/devices/{device_id}/commands"
+        # O comando na API da Samsung para isso costuma ser setAutoCleaningMode
+        mode = "on" if state == "on" else "off"
+        
+        payload = {
+            "commands": [
+                {
+                    "component": "main",
+                    "capability": "custom.autoCleaningMode",
+                    "command": "setAutoCleaningMode",
+                    "arguments": [mode]
+                }
+            ]
+        }
+        async with session.post(url, headers=self._headers, json=payload) as resp:
+            resp.raise_for_status()
 
 
