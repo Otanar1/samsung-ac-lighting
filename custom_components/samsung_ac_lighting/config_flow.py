@@ -12,7 +12,11 @@ CONF_DEVICE = "device"
 
 
 class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 2
+    VERSION = 3
+
+    async def async_step_user(self, user_input=None):
+        return await self.async_step_token()
+
 
     def __init__(self):
         self._token = None
@@ -22,7 +26,7 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return await self.async_step_user()
 
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_token(self, user_input=None):
         errors = {}
 
         if user_input is not None:
@@ -42,27 +46,24 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if not self._devices:
                     errors["base"] = "no_devices"
                 else:
-                    return await self.async_step_device()
+                    return await self.async_step_select_device()
 
             except Exception:
                 errors["base"] = "cannot_connect"
 
         return self.async_show_form(
-            step_id="device",
+            step_id="token",
             data_schema=vol.Schema({
-                vol.Required(CONF_DEVICE): vol.In(self._devices),
+                vol.Required(CONF_TOKEN): str,
             }),
-            description_placeholders={
-                "device_label": "Dispositivo"
-            },
             errors=errors,
         )
 
-    async def async_step_device(self, user_input=None):
+
+    async def async_step_select_device(self, user_input=None):
         if user_input is not None:
             device_id = user_input[CONF_DEVICE]
             device_name = self._devices[device_id]
-
 
             return self.async_create_entry(
                 title=f"{device_name} LED",
@@ -74,7 +75,7 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         return self.async_show_form(
-            step_id="device",
+            step_id="select_device",
             data_schema=vol.Schema({
                 vol.Required(
                     CONF_DEVICE,
@@ -82,4 +83,5 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): vol.In(self._devices),
             }),
         )
+
 

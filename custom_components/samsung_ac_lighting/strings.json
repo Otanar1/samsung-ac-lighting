@@ -1,21 +1,22 @@
 {
   "config": {
     "step": {
-      "user": {
+      "token": {
         "title": "Samsung AC Display Light",
         "description": "Informe seu token do SmartThings",
         "data": {
           "token": "Token do SmartThings"
         }
       },
-      "device": {
+      "select_device": {
         "title": "Selecionar dispositivo",
         "description": "Escolha o ar-condicionado desejado",
         "data": {
           "device": "Dispositivo"
         }
       }
-    },
+    }
+,
     "error": {
       "cannot_connect": "Não foi possível conectar à API do SmartThings",
       "no_devices": "Nenhum ar-condicionado encontrado"
