@@ -1,7 +1,7 @@
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import CONF_DEVICE_ID
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.entity import DeviceInfo  # <--- Importação Importante
+from homeassistant.helpers.entity import DeviceInfo
 
 from .const import DOMAIN
 from .coordinator import SamsungACCoordinator
@@ -18,8 +18,12 @@ async def async_setup_entry(hass, entry, add_entities):
 
 
 class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
-    _attr_has_entity_name = True 
-    _attr_name = "LED"  # O nome da entidade é apenas a função dela (LED/Display)
+    # Isso garante que o ID seja gerado como switch.nome_do_dispositivo_led
+    _attr_has_entity_name = True
+    
+    # O nome curto da entidade. Na UI aparecerá "Ar-condicionado da Sala Superior LED"
+    _attr_name = "LED"
+    
     _attr_icon = "mdi:led-on"
 
     def __init__(self, coordinator, entry):
@@ -28,29 +32,33 @@ class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
         self._device_id = entry.data[CONF_DEVICE_ID]
         self._device_name = entry.data[CONF_DEVICE_NAME]
         
-        # O unique_id continua o mesmo, garantindo que o HA reconheça a entidade
+        # Unique ID garante que você possa editar a entidade na UI, mas não define o entity_id
         self._attr_unique_id = f"{self._device_id}_lighting"
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Retorna informações sobre o dispositivo para o HA agrupar."""
+        """Informações baseadas no seu RAW data."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
-            name=self._device_name,
-            manufacturer="Samsung",
-            model="Air Conditioner (SmartThings)",
+            name=self._device_name, # "Ar-condicionado da Sala Superior" 
+            manufacturer="Samsung Electronics", # 
+            # Pegando o modelo exato do RAW data
+            model="TP1X_DA-AC-RAC-01001", # [cite: 6]
+            # Opcional: Versão do firmware
+            sw_version="ARA-WW-TP1-24-ARXX00_11240611", # [cite: 3]
         )
 
     @property
     def is_on(self):
         try:
+            # Caminho verificado no RAW: components -> main -> samsungce.airConditionerLighting -> lighting -> value [cite: 95, 96]
             return (
                 self.coordinator.data["components"]["main"]
                 ["samsungce.airConditionerLighting"]
                 ["lighting"]["value"]
                 == "on"
             )
-        except KeyError:
+        except (KeyError, TypeError):
             return None
 
     async def async_turn_on(self, **kwargs):
