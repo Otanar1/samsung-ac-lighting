@@ -1,6 +1,7 @@
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import CONF_DEVICE_ID
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity import DeviceInfo  # <--- Importação Importante
 
 from .const import DOMAIN
 from .coordinator import SamsungACCoordinator
@@ -17,20 +18,28 @@ async def async_setup_entry(hass, entry, add_entities):
 
 
 class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
-    _attr_has_entity_name = True
-    _attr_name = "LED"
+    _attr_has_entity_name = True 
+    _attr_name = "LED"  # O nome da entidade é apenas a função dela (LED/Display)
     _attr_icon = "mdi:led-on"
-
-
 
     def __init__(self, coordinator, entry):
         super().__init__(coordinator)
 
         self._device_id = entry.data[CONF_DEVICE_ID]
         self._device_name = entry.data[CONF_DEVICE_NAME]
-
-        self._attr_name = f"{self._device_name} LED"
+        
+        # O unique_id continua o mesmo, garantindo que o HA reconheça a entidade
         self._attr_unique_id = f"{self._device_id}_lighting"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Retorna informações sobre o dispositivo para o HA agrupar."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=self._device_name,
+            manufacturer="Samsung",
+            model="Air Conditioner (SmartThings)",
+        )
 
     @property
     def is_on(self):
