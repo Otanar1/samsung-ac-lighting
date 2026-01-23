@@ -6,7 +6,6 @@ import aiohttp
 from .const import DOMAIN, CONF_TOKEN, CONF_DEVICE_ID
 from .api import SmartThingsAPI
 
-
 class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
