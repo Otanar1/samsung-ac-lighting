@@ -1,0 +1,7 @@
+{
+  "name": "Samsung AC Display Light",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": ["switch"],
+  "iot_class": "cloud_polling"
+}
