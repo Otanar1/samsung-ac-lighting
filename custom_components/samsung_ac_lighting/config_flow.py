@@ -18,6 +18,10 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._token = None
         self._devices = {}
 
+    async def async_step_init(self, user_input=None):
+        return await self.async_step_user()
+
+
     async def async_step_user(self, user_input=None):
         errors = {}
 
