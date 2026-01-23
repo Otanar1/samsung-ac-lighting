@@ -7,6 +7,8 @@ from .const import DOMAIN
 from .api import SmartThingsAPI
 
 CONF_DEVICE_NAME = "device_name"
+CONF_DEVICE = "device"
+
 
 
 class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -51,8 +53,9 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_device(self, user_input=None):
         if user_input is not None:
-            device_id = user_input[CONF_DEVICE_ID]
+            device_id = user_input[CONF_DEVICE]
             device_name = self._devices[device_id]
+
 
             return self.async_create_entry(
                 title=f"{device_name} LED",
@@ -66,6 +69,7 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="device",
             data_schema=vol.Schema({
-                vol.Required(CONF_DEVICE_ID): vol.In(self._devices),
+                vol.Required(CONF_DEVICE, description={"suggested_value": ""}): vol.In(self._devices),
             }),
+
         )
