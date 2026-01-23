@@ -1,12 +1,9 @@
 import aiohttp
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType
 from homeassistant.const import CONF_TOKEN, CONF_DEVICE_ID
 
-from .const import DOMAIN
 from .api import SmartThingsAPI
+
 
 async def async_setup_entry(hass, entry, add_entities):
     token = entry.data[CONF_TOKEN]
@@ -16,8 +13,6 @@ async def async_setup_entry(hass, entry, add_entities):
     session = aiohttp.ClientSession()
 
     add_entities([SamsungACLightingSwitch(api, session, device_id)])
-
-
 
 class SamsungACLightingSwitch(SwitchEntity):
     _attr_name = "LED do Ar-condicionado Samsung"
@@ -30,29 +25,36 @@ class SamsungACLightingSwitch(SwitchEntity):
         self._is_on = None
 
     @property
+    def unique_id(self):
+        return f"{self._device_id}_lighting"
+
+    @property
     def is_on(self):
         return self._is_on
 
     async def async_update(self):
-        data = await self._api.get_device(self._session, self._device_id)
+        """
+        Atualiza o estado lendo o endpoint:
+        GET /devices/{deviceId}/status
+        """
+        try:
+            data = await self._api.get_device(self._session, self._device_id)
 
-        for component in data.get("components", []):
-            if component.get("id") != "main":
-                continue
+            lighting = (
+                data["components"]["main"]
+                ["samsungce.airConditionerLighting"]
+                ["lighting"]["value"]
+            )
 
-            for cap in component.get("capabilities", []):
-                if cap.get("id") == "samsungce.airConditionerLighting":
-                    status = cap.get("status", {})
-                    lighting = status.get("lighting", {})
-                    value = lighting.get("value")
+            self._is_on = lighting == "on"
 
-                    if value in ("on", "off"):
-                        self._is_on = value == "on"
-                    else:
-                        self._is_on = None
-                    return
+        except KeyError:
+            # Capability não disponível ou estrutura inesperada
+            self._is_on = None
 
-        self._is_on = None
+        except Exception:
+            # Erro de rede / API
+            self._is_on = None
 
     async def async_turn_on(self, **kwargs):
         await self._api.set_lighting(self._session, self._device_id, "on")
