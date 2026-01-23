@@ -48,16 +48,15 @@ class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
             return None
 
     async def async_turn_on(self, **kwargs):
-        # 1. Otimista: Tenta atualizar visualmente na hora
+        # 1. Otimista: Atualiza visualmente na hora
         try:
             self.coordinator.data["components"]["main"]["samsungce.airConditionerLighting"]["lighting"]["value"] = "on"
             self.async_write_ha_state()
         except Exception as e:
             _LOGGER.warning(f"Erro na atualização otimista do LED: {e}")
 
-        # 2. Comando Real
+        # 2. Comando Real (Sem pedir refresh imediato para evitar o 'bate-volta')
         await self.coordinator.api.set_lighting(self.coordinator.session, self._device_id, "on")
-        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
         # 1. Otimista
@@ -67,9 +66,8 @@ class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
         except Exception as e:
              _LOGGER.warning(f"Erro na atualização otimista do LED: {e}")
 
-        # 2. Comando Real
+        # 2. Comando Real (Sem refresh imediato)
         await self.coordinator.api.set_lighting(self.coordinator.session, self._device_id, "off")
-        await self.coordinator.async_request_refresh()
 
 
 class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
@@ -85,7 +83,6 @@ class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        # CORREÇÃO: Usando a função helper para não quebrar o código
         return _get_device_info_helper(self.coordinator, self._device_id, self._device_name)
 
     @property
@@ -108,8 +105,8 @@ class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
         except Exception:
             pass
 
+        # Comando Real (Sem refresh imediato)
         await self.coordinator.api.set_auto_clean(self.coordinator.session, self._device_id, "on")
-        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
         # Otimista
@@ -119,10 +116,9 @@ class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
         except Exception:
             pass
 
+        # Comando Real (Sem refresh imediato)
         await self.coordinator.api.set_auto_clean(self.coordinator.session, self._device_id, "off")
-        await self.coordinator.async_request_refresh()
 
-# Helper para evitar duplicação de código e erros
 def _get_device_info_helper(coordinator, device_id, device_name):
     data = coordinator.data or {}
     components = data.get("components", {})
