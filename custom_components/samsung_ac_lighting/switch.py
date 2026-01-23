@@ -8,19 +8,15 @@ from homeassistant.const import CONF_TOKEN, CONF_DEVICE_ID
 from .const import DOMAIN
 from .api import SmartThingsAPI
 
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    add_entities: AddEntitiesCallback,
-    discovery_info=None,
-):
-    token = config.get(CONF_TOKEN)
-    device_id = config.get(CONF_DEVICE_ID)
+async def async_setup_entry(hass, entry, add_entities):
+    token = entry.data[CONF_TOKEN]
+    device_id = entry.data[CONF_DEVICE_ID]
 
     api = SmartThingsAPI(token)
     session = aiohttp.ClientSession()
 
     add_entities([SamsungACLightingSwitch(api, session, device_id)])
+
 
 
 class SamsungACLightingSwitch(SwitchEntity):

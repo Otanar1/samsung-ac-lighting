@@ -8,11 +8,12 @@ class SmartThingsAPI:
             "Content-Type": "application/json",
         }
 
-    async def get_device(self, session, device_id):
-        url = f"{SMARTTHINGS_API_BASE}/devices/{device_id}"
+    async def get_devices(self, session):
+        url = f"{SMARTTHINGS_API_BASE}/devices"
         async with session.get(url, headers=self._headers) as resp:
             resp.raise_for_status()
-            return await resp.json()
+            data = await resp.json()
+            return data.get("items", [])
 
     async def set_lighting(self, session, device_id, state):
         url = f"{SMARTTHINGS_API_BASE}/devices/{device_id}/commands"
@@ -38,4 +39,5 @@ class SmartThingsAPI:
 
         async with session.post(url, headers=self._headers, json=payload) as resp:
             resp.raise_for_status()
+
 
