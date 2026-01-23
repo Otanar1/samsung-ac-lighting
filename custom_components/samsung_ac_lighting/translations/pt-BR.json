@@ -1,0 +1,14 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Token do SmartThings",
+        "description": "Informe o token de acesso pessoal do SmartThings."
+      },
+      "device": {
+        "title": "Dispositivo",
+        "description": "Selecione o ar-condicionado Samsung"
+      }
+    }
+  }
+}

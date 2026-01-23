@@ -44,10 +44,13 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "cannot_connect"
 
         return self.async_show_form(
-            step_id="user",
+            step_id="device",
             data_schema=vol.Schema({
-                vol.Required(CONF_TOKEN): str,
+                vol.Required(CONF_DEVICE): vol.In(self._devices),
             }),
+            description_placeholders={
+                "device_label": "Dispositivo"
+            },
             errors=errors,
         )
 

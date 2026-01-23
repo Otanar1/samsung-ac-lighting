@@ -21,7 +21,7 @@ class SamsungACCoordinator(DataUpdateCoordinator):
             hass,
             logger=_LOGGER,
             name="Samsung AC Coordinator",
-            update_interval=timedelta(seconds=30),
+            update_interval=timedelta(seconds=15),
         )
         self.api = api
         self.session = session
