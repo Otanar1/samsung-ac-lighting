@@ -65,8 +65,15 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             device_id = user_input[CONF_DEVICE]
             device_name = self._devices[device_id]
 
+            # --- ADICIONE ISTO ---
+            # Define o ID único como o ID do dispositivo SmartThings
+            await self.async_set_unique_id(device_id)
+            # Aborta se já existir uma configuração com este ID
+            self._abort_if_unique_id_configured()
+            # ---------------------
+
             return self.async_create_entry(
-                title=f"{device_name} LED",
+                title=f"{device_name} LED", # Dica: Use apenas device_name, o HA adiciona o resto
                 data={
                     CONF_TOKEN: self._token,
                     CONF_DEVICE_ID: device_id,

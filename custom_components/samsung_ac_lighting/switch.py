@@ -11,57 +11,40 @@ CONF_DEVICE_NAME = "device_name"
 
 async def async_setup_entry(hass, entry, add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
-
-    add_entities([
-        SamsungACLightingSwitch(coordinator, entry)
-    ])
+    add_entities([SamsungACLightingSwitch(coordinator, entry)])
 
 
 class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
+    """Switch para controlar o LED do Ar Condicionado Samsung."""
+
     _attr_has_entity_name = True
     _attr_name = "LED"
     _attr_icon = "mdi:led-on"
 
     def __init__(self, coordinator, entry):
         super().__init__(coordinator)
-
         self._device_id = entry.data[CONF_DEVICE_ID]
         self._device_name = entry.data[CONF_DEVICE_NAME]
-        
         self._attr_unique_id = f"{self._device_id}_lighting"
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Retorna informações dinâmicas do dispositivo."""
-        
-        # Tenta pegar os dados do coordinator (cache da API)
-        # Estrutura baseada no RAW.txt enviado
+        """Informações do dispositivo para o registro do HA."""
         data = self.coordinator.data or {}
         components = data.get("components", {})
         main = components.get("main", {})
-
-        # Tenta buscar Fabricante (ocf -> mnmn)
-        manufacturer = (
-            main.get("ocf", {})
-            .get("mnmn", {})
-            .get("value", "Samsung") # Valor padrão se falhar
-        )
-
-        # Tenta buscar Modelo. 
-        # No seu RAW, 'modelName' é null, então usamos 'description' como principal
+        ocf = main.get("ocf", {})
+        
+        # Busca segura de dados (Safe Navigation)
+        manufacturer = ocf.get("mnmn", {}).get("value", "Samsung Electronics")
+        
+        # Tenta pegar o modelo de vários lugares possíveis
         device_id_data = main.get("samsungce.deviceIdentification", {})
         model = device_id_data.get("description", {}).get("value")
-        
         if not model:
-            # Fallback se description também for nulo
             model = device_id_data.get("modelName", {}).get("value", "Samsung AC")
-
-        # Tenta buscar Firmware (ocf -> mnfv)
-        sw_version = (
-            main.get("ocf", {})
-            .get("mnfv", {})
-            .get("value")
-        )
+            
+        sw_version = ocf.get("mnfv", {}).get("value")
 
         return DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
@@ -73,17 +56,30 @@ class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
 
     @property
     def is_on(self):
+        """Retorna True se o LED estiver ligado."""
+        # Se o coordinator falhou na última atualização, o entity fica 'unavailable'
+        # automaticamente por herança da CoordinatorEntity.
+        
+        if not self.coordinator.data:
+            return None
+            
         try:
+            # Navegação segura pelo JSON complexo
             return (
-                self.coordinator.data["components"]["main"]
-                ["samsungce.airConditionerLighting"]
-                ["lighting"]["value"]
+                self.coordinator.data
+                .get("components", {})
+                .get("main", {})
+                .get("samsungce.airConditionerLighting", {})
+                .get("lighting", {})
+                .get("value")
                 == "on"
             )
-        except (KeyError, TypeError):
+        except (AttributeError, TypeError):
+            # Se a estrutura mudar ou for inesperada
             return None
 
     async def async_turn_on(self, **kwargs):
+        """Liga o LED."""
         await self.coordinator.api.set_lighting(
             self.coordinator.session,
             self._device_id,
@@ -92,6 +88,7 @@ class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
+        """Desliga o LED."""
         await self.coordinator.api.set_lighting(
             self.coordinator.session,
             self._device_id,
