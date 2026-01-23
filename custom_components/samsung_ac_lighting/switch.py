@@ -17,8 +17,10 @@ async def async_setup_entry(hass, entry, add_entities):
 
 
 class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
-    _attr_icon = "mdi:led-on"
     _attr_has_entity_name = True
+    _attr_name = "LED"
+    _attr_icon = "mdi:led-on"
+
 
 
     def __init__(self, coordinator, entry):

@@ -69,7 +69,10 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="device",
             data_schema=vol.Schema({
-                vol.Required(CONF_DEVICE, description={"suggested_value": ""}): vol.In(self._devices),
+                vol.Required(
+                    CONF_DEVICE,
+                    description={"name": "Dispositivo"}
+                ): vol.In(self._devices),
             }),
-
         )
+
