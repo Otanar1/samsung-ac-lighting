@@ -2,16 +2,18 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.const import CONF_DEVICE_ID
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
+import logging
 
 from .const import DOMAIN
 from .coordinator import SamsungACCoordinator
 
-CONF_DEVICE_NAME = "device_name"
+_LOGGER = logging.getLogger(__name__)
 
+CONF_DEVICE_NAME = "device_name"
 
 async def async_setup_entry(hass, entry, add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
-
+    
     add_entities([
         SamsungACLightingSwitch(coordinator, entry),
         SamsungACAutoCleanSwitch(coordinator, entry)
@@ -19,8 +21,6 @@ async def async_setup_entry(hass, entry, add_entities):
 
 
 class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
-    """Switch para controlar o LED do Ar Condicionado Samsung."""
-
     _attr_has_entity_name = True
     _attr_name = "LED"
     _attr_icon = "mdi:led-on"
@@ -33,88 +33,44 @@ class SamsungACLightingSwitch(CoordinatorEntity, SwitchEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Informações do dispositivo para o registro do HA."""
-        data = self.coordinator.data or {}
-        components = data.get("components", {})
-        main = components.get("main", {})
-        ocf = main.get("ocf", {})
-        
-        # Busca segura de dados (Safe Navigation)
-        manufacturer = ocf.get("mnmn", {}).get("value", "Samsung Electronics")
-        
-        # Tenta pegar o modelo de vários lugares possíveis
-        device_id_data = main.get("samsungce.deviceIdentification", {})
-        model = device_id_data.get("description", {}).get("value")
-        if not model:
-            model = device_id_data.get("modelName", {}).get("value", "Samsung AC")
-            
-        sw_version = ocf.get("mnfv", {}).get("value")
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=self._device_name,
-            manufacturer=manufacturer,
-            model=model,
-            sw_version=sw_version,
-        )
+        return _get_device_info_helper(self.coordinator, self._device_id, self._device_name)
 
     @property
     def is_on(self):
-        """Retorna True se o LED estiver ligado."""
-        # Se o coordinator falhou na última atualização, o entity fica 'unavailable'
-        # automaticamente por herança da CoordinatorEntity.
-        
-        if not self.coordinator.data:
-            return None
-            
         try:
-            # Navegação segura pelo JSON complexo
             return (
-                self.coordinator.data
-                .get("components", {})
-                .get("main", {})
-                .get("samsungce.airConditionerLighting", {})
-                .get("lighting", {})
-                .get("value")
+                self.coordinator.data["components"]["main"]
+                ["samsungce.airConditionerLighting"]
+                ["lighting"]["value"]
                 == "on"
             )
-        except (AttributeError, TypeError):
-            # Se a estrutura mudar ou for inesperada
+        except (KeyError, TypeError, AttributeError):
             return None
 
     async def async_turn_on(self, **kwargs):
-        # 1. Atualização Otimista: "Finge" que já ligou para o usuário ver instantaneamente
+        # 1. Otimista: Tenta atualizar visualmente na hora
         try:
             self.coordinator.data["components"]["main"]["samsungce.airConditionerLighting"]["lighting"]["value"] = "on"
-            self.async_write_ha_state() # Força o HA a atualizar o ícone na hora
-        except (KeyError, TypeError):
-            pass # Se der erro na estrutura, ignora e segue o fluxo normal
+            self.async_write_ha_state()
+        except Exception as e:
+            _LOGGER.warning(f"Erro na atualização otimista do LED: {e}")
 
-        # 2. Envia o comando real para a nuvem
-        await self.coordinator.api.set_lighting(
-            self.coordinator.session,
-            self._device_id,
-            "on",
-        )
-        
-        # 3. Atualiza os dados reais (para confirmar se funcionou)
+        # 2. Comando Real
+        await self.coordinator.api.set_lighting(self.coordinator.session, self._device_id, "on")
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
-        # 1. Atualização Otimista
+        # 1. Otimista
         try:
             self.coordinator.data["components"]["main"]["samsungce.airConditionerLighting"]["lighting"]["value"] = "off"
             self.async_write_ha_state()
-        except (KeyError, TypeError):
-            pass
+        except Exception as e:
+             _LOGGER.warning(f"Erro na atualização otimista do LED: {e}")
 
         # 2. Comando Real
-        await self.coordinator.api.set_lighting(
-            self.coordinator.session,
-            self._device_id,
-            "off",
-        )
+        await self.coordinator.api.set_lighting(self.coordinator.session, self._device_id, "off")
         await self.coordinator.async_request_refresh()
+
 
 class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
     _attr_has_entity_name = True
@@ -129,19 +85,19 @@ class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
 
     @property
     def device_info(self) -> DeviceInfo:
-        # Reutiliza a lógica do device_info anterior ou copia aqui
-        # (O ideal seria ter o device_info centralizado, mas pode copiar por enquanto)
-        return self.coordinator.get_device_info(self._device_name) # Se você criar um helper, senão copie o bloco DeviceInfo
+        # CORREÇÃO: Usando a função helper para não quebrar o código
+        return _get_device_info_helper(self.coordinator, self._device_id, self._device_name)
 
     @property
     def is_on(self):
         try:
             return (
                 self.coordinator.data["components"]["main"]
-                ["custom.autoCleaningMode"]["autoCleaningMode"]["value"]
+                ["custom.autoCleaningMode"]
+                ["autoCleaningMode"]["value"]
                 == "on"
             )
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, AttributeError):
             return None
 
     async def async_turn_on(self, **kwargs):
@@ -149,7 +105,8 @@ class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
         try:
             self.coordinator.data["components"]["main"]["custom.autoCleaningMode"]["autoCleaningMode"]["value"] = "on"
             self.async_write_ha_state()
-        except: pass
+        except Exception:
+            pass
 
         await self.coordinator.api.set_auto_clean(self.coordinator.session, self._device_id, "on")
         await self.coordinator.async_request_refresh()
@@ -159,7 +116,32 @@ class SamsungACAutoCleanSwitch(CoordinatorEntity, SwitchEntity):
         try:
             self.coordinator.data["components"]["main"]["custom.autoCleaningMode"]["autoCleaningMode"]["value"] = "off"
             self.async_write_ha_state()
-        except: pass
+        except Exception:
+            pass
 
         await self.coordinator.api.set_auto_clean(self.coordinator.session, self._device_id, "off")
         await self.coordinator.async_request_refresh()
+
+# Helper para evitar duplicação de código e erros
+def _get_device_info_helper(coordinator, device_id, device_name):
+    data = coordinator.data or {}
+    components = data.get("components", {})
+    main = components.get("main", {})
+    ocf = main.get("ocf", {})
+    
+    manufacturer = ocf.get("mnmn", {}).get("value", "Samsung Electronics")
+    
+    device_id_data = main.get("samsungce.deviceIdentification", {})
+    model = device_id_data.get("description", {}).get("value")
+    if not model:
+        model = device_id_data.get("modelName", {}).get("value", "Samsung AC")
+        
+    sw_version = ocf.get("mnfv", {}).get("value")
+
+    return DeviceInfo(
+        identifiers={(DOMAIN, device_id)},
+        name=device_name,
+        manufacturer=manufacturer,
+        model=model,
+        sw_version=sw_version,
+    )
