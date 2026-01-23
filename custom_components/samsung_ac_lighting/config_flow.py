@@ -1,10 +1,13 @@
 from homeassistant import config_entries
-from homeassistant.core import callback
+from homeassistant.const import CONF_TOKEN, CONF_DEVICE_ID
 import voluptuous as vol
 import aiohttp
 
-from .const import DOMAIN, CONF_TOKEN, CONF_DEVICE_ID
+from .const import DOMAIN
 from .api import SmartThingsAPI
+
+CONF_DEVICE_NAME = "device_name"
+
 
 class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -36,33 +39,33 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return await self.async_step_device()
 
             except Exception:
-                errors["base"] = "auth_failed"
+                errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_TOKEN): str,
-                }
-            ),
+            data_schema=vol.Schema({
+                vol.Required(CONF_TOKEN): str,
+            }),
             errors=errors,
         )
 
     async def async_step_device(self, user_input=None):
         if user_input is not None:
+            device_id = user_input[CONF_DEVICE_ID]
+            device_name = self._devices[device_id]
+
             return self.async_create_entry(
-                title="Samsung AC Display Light",
+                title=f"{device_name} LED",
                 data={
                     CONF_TOKEN: self._token,
-                    CONF_DEVICE_ID: user_input[CONF_DEVICE_ID],
+                    CONF_DEVICE_ID: device_id,
+                    CONF_DEVICE_NAME: device_name,
                 },
             )
 
         return self.async_show_form(
             step_id="device",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_DEVICE_ID): vol.In(self._devices),
-                }
-            ),
+            data_schema=vol.Schema({
+                vol.Required(CONF_DEVICE_ID): vol.In(self._devices),
+            }),
         )
