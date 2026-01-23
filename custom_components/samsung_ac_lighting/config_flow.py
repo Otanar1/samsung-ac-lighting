@@ -12,7 +12,7 @@ CONF_DEVICE = "device"
 
 
 class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self):
         self._token = None
