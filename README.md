@@ -13,7 +13,9 @@ Custom integration to control the LED/display of Samsung air conditioners via **
 ## ✨ Funcionalidades | Features
 
 - Liga/desliga o display (LED)
-- Estado real (não otimista)
+- ✨ NOVO: Controle de Auto Cleaning (Limpeza Automática)
+- Estado real (não otimista) para confirmação
+- Feedback visual instantâneo (UI Otimista)
 - Sincroniza mudanças feitas pelo controle remoto
 - Compatível com automações
 - Usa DataUpdateCoordinator (menos requisições / evita 429)
