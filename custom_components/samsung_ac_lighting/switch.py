@@ -39,12 +39,24 @@ class SamsungACLightingSwitch(SwitchEntity):
 
     async def async_update(self):
         data = await self._api.get_device(self._session, self._device_id)
-        capabilities = data["components"][0]["capabilities"]
 
-        for cap in capabilities:
-            if cap["id"] == "samsungce.airConditionerLighting":
-                self._is_on = cap["status"]["lighting"]["value"] == "on"
-                return
+        for component in data.get("components", []):
+            if component.get("id") != "main":
+                continue
+
+            for cap in component.get("capabilities", []):
+                if cap.get("id") == "samsungce.airConditionerLighting":
+                    status = cap.get("status", {})
+                    lighting = status.get("lighting", {})
+                    value = lighting.get("value")
+
+                    if value in ("on", "off"):
+                        self._is_on = value == "on"
+                    else:
+                        self._is_on = None
+                    return
+
+        self._is_on = None
 
     async def async_turn_on(self, **kwargs):
         await self._api.set_lighting(self._session, self._device_id, "on")

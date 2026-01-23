@@ -16,15 +16,26 @@ class SmartThingsAPI:
 
     async def set_lighting(self, session, device_id, state):
         url = f"{SMARTTHINGS_API_BASE}/devices/{device_id}/commands"
+
+        if state == "off":
+            options = ["Light_On"]
+        else:
+            options = ["Light_Off"]
+
         payload = {
             "commands": [
                 {
                     "component": "main",
-                    "capability": "samsungce.airConditionerLighting",
-                    "command": "setLighting",
-                    "arguments": [state],
+                    "capability": "execute",
+                    "command": "execute",
+                    "arguments": [
+                        "mode/vs/0",
+                        {"x.com.samsung.da.options": options}
+                    ]
                 }
             ]
         }
+
         async with session.post(url, headers=self._headers, json=payload) as resp:
             resp.raise_for_status()
+
