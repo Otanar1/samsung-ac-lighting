@@ -27,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         api=api,
         session=session,
         device_id=device_id,
+        entry=entry # Passando a entrada de configuração
     )
 
     try:
@@ -38,12 +39,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    
+    # IMPORTANTE: Listener para recarregar se mudar as opções
+    entry.async_on_unload(entry.add_update_listener(update_listener))
+    
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     coordinator = hass.data[DOMAIN].pop(entry.entry_id)
-
     await coordinator.session.close()
-
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
+    """Recarrega a integração quando as opções mudam."""
+    await hass.config_entries.async_reload(entry.entry_id)
