@@ -2,12 +2,16 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv  # <--- Adicionado
 
 from .api import SmartThingsAPI
 from .coordinator import SamsungACCoordinator
 from .const import DOMAIN, CONF_TOKEN, CONF_DEVICE_ID
 
-PLATFORMS = ["switch", "select"] # <--- ADICIONADO "select"
+# <--- Adicionado: Define que a config é feita apenas via UI (Config Flow)
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+PLATFORMS = ["switch", "select"]
 
 async def async_setup(hass: HomeAssistant, config: dict):
     return True
