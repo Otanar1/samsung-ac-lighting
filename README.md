@@ -1,7 +1,7 @@
 # Samsung AC Display Light (Home Assistant)
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Otanar1/samsung-ac-lighting/main/custom_components/samsung_ac_lighting/logo.png" alt="Samsung AC Display Light" width="100%">
+  <img src="https://raw.githubusercontent.com/Otanar1/samsung-ac-lighting/main/custom_components/samsung_ac_lighting/logo.png" alt="Samsung AC Display Light" width="60%">
 </div>
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
