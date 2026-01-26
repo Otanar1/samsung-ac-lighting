@@ -12,75 +12,76 @@ Custom integration to control the LED/display of Samsung air conditioners via **
 
 ## ✨ Funcionalidades | Features
 
-- Liga/desliga o display (LED)
-- ✨ NOVO: Controle de Auto Cleaning (Limpeza Automática)
-- Estado real (não otimista) para confirmação
-- Feedback visual instantâneo (UI Otimista)
-- Sincroniza mudanças feitas pelo controle remoto
-- Compatível com automações
-- Usa DataUpdateCoordinator (menos requisições / evita 429)
-- Configuração 100% pela interface do Home Assistant (Config Flow)
+- 💡 **Controle de LED:** Liga/desliga o display do ar-condicionado.
+- 🧹 **Auto Cleaning:** Controle de Limpeza Automática (funcionalidade exclusiva).
+- ⏱️ **Auto LED Off:** Desliga o LED automaticamente após um tempo configurável.
+- 🎛️ **Controles na Dashboard:** Configuração feita através de entidades nativas (Switch e Select).
+- 🚀 **UI Otimista:** Feedback visual instantâneo (sem lag ao clicar).
+- 🔄 **Sincronização:** Reflete mudanças feitas pelo controle remoto.
+- **Eficiência:** Usa `DataUpdateCoordinator` para evitar limites da API (Rate Limits).
 
 ---
 
 ## 📦 Instalação (HACS) | Installation (HACS)
 
-1. Adicione este repositório como **Custom Repository**
-2. Tipo: **Integration**
-3. Instale a integração
-4. Reinicie o Home Assistant
+1. Adicione este repositório como **Custom Repository** no HACS.
+2. Tipo: **Integration**.
+3. Instale a integração.
+4. Reinicie o Home Assistant.
 
 ---
 
 ## ⚙️ Configuração | Configuration
 
-### Pela Interface (Config Flow)
-
-1. Vá em **Configurações → Dispositivos e Serviços**
-2. Clique em **Adicionar integração**
-3. Procure por **Samsung AC Display Light**
+### 1. Conexão (Setup)
+1. Vá em **Configurações → Dispositivos e Serviços**.
+2. Clique em **Adicionar integração**.
+3. Procure por **Samsung AC Display Light**.
 4. Informe:
-   - **SmartThings Personal Access Token**
-   - Selecione o **ar-condicionado desejado**
-5. Conclua a configuração
+   - **SmartThings Personal Access Token**.
+   - Selecione o **ar-condicionado desejado**.
 
-Nenhuma edição em `configuration.yaml` é necessária.
+### 2. Configuração do Auto LED (Dashboard)
+Esta integração cria entidades de configuração diretamente na página do dispositivo. Você pode adicioná-las ao seu painel Lovelace:
 
-No `configuration.yaml` changes are required.
+| Entidade | Tipo | Função |
+| :--- | :--- | :--- |
+| `switch.auto_led_off` | Switch | Ativa/Desativa o desligamento automático do LED. |
+| `select.tempo_auto_off` | Select | Define o tempo de espera (5s, 15s, 30s, 60s, 120s). |
+
+*Nota: As configurações são salvas e restauradas automaticamente mesmo após reiniciar o Home Assistant.*
 
 ---
 
 ## 🔁 Sincronização de Estado | State Sync
 
-- Alterações feitas pelo **controle remoto** são refletidas automaticamente no Home Assistant
-- O estado do switch sempre reflete o estado real do dispositivo
+- Alterações feitas pelo **controle remoto** são refletidas automaticamente no Home Assistant.
+- O estado dos botões no Home Assistant sempre tenta prever a ação (UI Otimista) e depois confirma com a nuvem.
 
 ---
 
 ## 🧠 Arquitetura | Architecture
 
 - SmartThings Cloud API
-- DataUpdateCoordinator
-- Config Flow (UI-first)
-- Switch platform
+- DataUpdateCoordinator (Polling de 15s)
+- Dashboard Entities (Switch/Select) para configuração
+- RestoreEntity para persistência de dados
 
 ---
 
 ## 🛠️ Próximas melhorias | Planned Improvements
 
-- Debounce e rate limit inteligente
 - Expor controles adicionais:
-  - Beep
-  - Quiet
+  - Beep (Sound Effect)
+  - Quiet Mode
   - WindFree
-- Opção: desligar LED automaticamente ao ligar o ar
 
 ---
 
 ## ⚠️ Observações | Notes
 
-- Requer conexão com a internet
-- Pode haver limites de requisição impostos pela SmartThings API
+- Requer conexão constante com a internet (Cloud API).
+- Pode haver limites de requisição impostos pela SmartThings API se usar muitos dispositivos.
 
 ---
 
