@@ -1,7 +1,7 @@
 # Samsung AC Display Light (Home Assistant)
 
 <div align="center">
-  <img src="logo.png" alt="Logo" width="100%">
+  <img src="custom_components/samsung_ac_lighting/logo.png" alt="Logo" width="100%">
 </div>
 
 Integração personalizada para controlar o LED/display de aparelhos de ar-condicionado Samsung via **SmartThings Cloud API**.
