@@ -31,9 +31,9 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._token = user_input[CONF_TOKEN]
             try:
-                # Usamos a sessão do HA para evitar criar novas conexões desnecessárias
                 session = async_get_clientsession(self.hass)
                 api = SmartThingsAPI(self._token)
+                # Passamos session aqui conforme sua API pede
                 devices = await api.get_devices(session)
                 
                 self._devices = {
@@ -62,6 +62,7 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(device_id)
             self._abort_if_unique_id_configured()
             
+            # Mantemos a estrutura exata que seus outros arquivos esperam
             return self.async_create_entry(
                 title=f"{device_name}", 
                 data={
@@ -83,15 +84,15 @@ class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class SamsungACOptionsFlowHandler(config_entries.OptionsFlow):
     """Fluxo para alterar o Token sem reinstalar."""
-
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
+    
+    # NOTA: Não definimos __init__ aqui para evitar o erro "has no setter".
+    # O Home Assistant injeta o config_entry automaticamente na classe pai.
 
     async def async_step_init(self, user_input=None):
         """Gerencia as opções (Troca de Token)."""
         errors = {}
         
-        # Pega o token atual para mostrar na caixa de texto
+        # Pega o token atual
         current_token = self.config_entry.data.get(CONF_TOKEN, "")
 
         if user_input is not None:
@@ -102,7 +103,6 @@ class SamsungACOptionsFlowHandler(config_entries.OptionsFlow):
             api = SmartThingsAPI(new_token)
             
             try:
-                # Tenta buscar dispositivos para ver se o token funciona
                 await api.get_devices(session)
                 token_valid = True
             except Exception:
@@ -111,21 +111,19 @@ class SamsungACOptionsFlowHandler(config_entries.OptionsFlow):
             if not token_valid:
                 errors["base"] = "cannot_connect"
             else:
-                # Token Válido! Vamos atualizar.
-                # IMPORTANTE: Copiamos os dados antigos para NÃO perder o Device Name e ID
+                # Token Válido! 
+                # Copiamos os dados antigos para NÃO perder o Device Name e ID
                 new_data = self.config_entry.data.copy()
                 new_data[CONF_TOKEN] = new_token
                 
-                # Atualiza a entrada principal
+                # Atualiza a entrada
                 self.hass.config_entries.async_update_entry(
                     self.config_entry, 
                     data=new_data
                 )
                 
-                # Recarrega a integração para aplicar o novo token imediatamente
+                # Recarrega a integração
                 await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-                
-                # Finaliza o fluxo
                 return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
