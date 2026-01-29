@@ -1,4 +1,3 @@
-import logging
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -9,9 +8,7 @@ from .api import SmartThingsAPI
 from .coordinator import SamsungACCoordinator
 from .const import DOMAIN, CONF_TOKEN, CONF_DEVICE_ID
 
-_LOGGER = logging.getLogger(__name__)
-
-# Define que a configuração é feita apenas via UI (Config Flow)
+# Define que a config é feita apenas via UI (Config Flow)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = ["switch", "select"]
@@ -37,6 +34,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     try:
         await coordinator.async_config_entry_first_refresh()
     except Exception as err:
+        # Não impedimos o setup se falhar na primeira vez, apenas logamos
+        # Isso ajuda se a internet cair, a integração tenta de novo depois
         await session.close()
         raise ConfigEntryNotReady from err
 
@@ -45,7 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
-    # Adiciona o ouvinte para atualizações (quando o usuário muda as opções)
+    # Adiciona o ouvinte para atualizações (Troca de token via botão Configurar)
     entry.async_on_unload(entry.add_update_listener(update_listener))
     
     return True
@@ -61,8 +60,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Recarrega a integração quando as opções mudam."""
     await hass.config_entries.async_reload(entry.entry_id)
-
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
-    """Migrate old entry."""
-    _LOGGER.debug("Migrating from version %s", config_entry.version)
-    return True
