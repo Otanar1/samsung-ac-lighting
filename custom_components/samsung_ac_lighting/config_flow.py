@@ -1,8 +1,13 @@
+import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession # <--- Importante
+
 from .const import DOMAIN, CONF_TOKEN, CONF_DEVICE_ID
 from .api import SmartThingsAPI
+
+_LOGGER = logging.getLogger(__name__)
 
 class SamsungACConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Samsung AC Display Light."""
@@ -14,16 +19,27 @@ class SamsungACConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             token = user_input[CONF_TOKEN]
             device_id = user_input.get(CONF_DEVICE_ID)
 
+            # Pega a sessão de rede do Home Assistant
+            session = async_get_clientsession(self.hass)
+            
             # Valida o token e lista dispositivos
             api = SmartThingsAPI(token)
-            devices = await api.get_devices()
+            
+            try:
+                # Passamos a session aqui para corrigir o erro
+                devices = await api.get_devices(session) 
+            except Exception:
+                _LOGGER.exception("Erro ao conectar na API SmartThings")
+                errors["base"] = "auth_error"
+                devices = None
 
             if not devices:
-                errors["base"] = "auth_error"
+                if "base" not in errors:
+                    errors["base"] = "auth_error"
             else:
                 # Se o usuário não escolheu dispositivo ainda (primeira tela)
                 if not device_id:
-                    # Se só tem um ar-condicionado, seleciona automático
+                    # Filtra apenas dispositivos que parecem Ar Condicionado (opcional, aqui pego todos)
                     ac_devices = {d['deviceId']: d['label'] for d in devices}
                     
                     if not ac_devices:
@@ -39,11 +55,9 @@ class SamsungACConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                 else:
                     # Usuário já escolheu o dispositivo e token está ok
-                    # Cria a entrada
                     await self.async_set_unique_id(device_id)
                     self._abort_if_unique_id_configured()
                     
-                    # Pega o nome do dispositivo para usar no título
                     device_name = next((d['label'] for d in devices if d['deviceId'] == device_id), "Samsung AC")
                     
                     return self.async_create_entry(
@@ -64,7 +78,6 @@ class SamsungACConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_device(self, user_input=None):
         """Segunda etapa: confirmar dispositivo se necessário."""
-        # Reutiliza a lógica do step_user pois ele trata ambos os casos
         return await self.async_step_user(user_input)
 
     @staticmethod
@@ -83,21 +96,24 @@ class SamsungACOptionsFlowHandler(config_entries.OptionsFlow):
         """Gerencia as opções."""
         errors = {}
         
-        # Valor atual do token
         current_token = self.config_entry.data.get(CONF_TOKEN, "")
 
         if user_input is not None:
             new_token = user_input.get(CONF_TOKEN)
             
-            # Testa o novo token
+            session = async_get_clientsession(self.hass)
             api = SmartThingsAPI(new_token)
-            devices = await api.get_devices()
+            
+            try:
+                # Passamos a session aqui também
+                devices = await api.get_devices(session)
+            except Exception:
+                devices = None
             
             if not devices:
                 errors["base"] = "auth_error"
             else:
-                # Atualiza a entrada de configuração com o novo token
-                # Nota: ID do dispositivo mantido, só trocamos a credencial
+                # Atualiza o token mantendo o resto
                 new_data = self.config_entry.data.copy()
                 new_data[CONF_TOKEN] = new_token
                 
@@ -106,7 +122,6 @@ class SamsungACOptionsFlowHandler(config_entries.OptionsFlow):
                     data=new_data
                 )
                 
-                # Recarrega a integração para aplicar
                 await self.hass.config_entries.async_reload(self.config_entry.entry_id)
                 return self.async_create_entry(title="", data={})
 
