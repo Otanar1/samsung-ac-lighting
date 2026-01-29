@@ -2,7 +2,7 @@ import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession # <--- Importante
+from homeassistant.helpers.aiohttp_client import async_get_clientsession # <--- Verifique se esta linha está lá
 
 from .const import DOMAIN, CONF_TOKEN, CONF_DEVICE_ID
 from .api import SmartThingsAPI
@@ -26,7 +26,7 @@ class SamsungACConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             api = SmartThingsAPI(token)
             
             try:
-                # Passamos a session aqui para corrigir o erro
+                # O ERRO ACONTECIA AQUI. Agora passamos (session)
                 devices = await api.get_devices(session) 
             except Exception:
                 _LOGGER.exception("Erro ao conectar na API SmartThings")
@@ -39,7 +39,7 @@ class SamsungACConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 # Se o usuário não escolheu dispositivo ainda (primeira tela)
                 if not device_id:
-                    # Filtra apenas dispositivos que parecem Ar Condicionado (opcional, aqui pego todos)
+                    # Filtra apenas dispositivos que parecem Ar Condicionado
                     ac_devices = {d['deviceId']: d['label'] for d in devices}
                     
                     if not ac_devices:
