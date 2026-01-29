@@ -1,68 +1,119 @@
-from homeassistant import config_entries
-from homeassistant.const import CONF_TOKEN, CONF_DEVICE_ID
 import voluptuous as vol
-import aiohttp
-
-from .const import DOMAIN
+from homeassistant import config_entries
+from homeassistant.core import callback
+from .const import DOMAIN, CONF_TOKEN, CONF_DEVICE_ID
 from .api import SmartThingsAPI
 
-CONF_DEVICE_NAME = "device_name"
-CONF_DEVICE = "device"
-
-class SamsungACLightingConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 3
+class SamsungACConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for Samsung AC Display Light."""
+    VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        return await self.async_step_token()
-
-    def __init__(self):
-        self._token = None
-        self._devices = {}
-
-    async def async_step_init(self, user_input=None):
-        return await self.async_step_user()
-
-    async def async_step_token(self, user_input=None):
         errors = {}
         if user_input is not None:
-            self._token = user_input[CONF_TOKEN]
-            try:
-                async with aiohttp.ClientSession() as session:
-                    api = SmartThingsAPI(self._token)
-                    devices = await api.get_devices(session)
-                self._devices = {
-                    d["deviceId"]: d["label"]
-                    for d in devices
-                    if d.get("ocf", {}).get("ocfDeviceType") == "oic.d.airconditioner"
-                }
-                if not self._devices:
-                    errors["base"] = "no_devices"
+            token = user_input[CONF_TOKEN]
+            device_id = user_input.get(CONF_DEVICE_ID)
+
+            # Valida o token e lista dispositivos
+            api = SmartThingsAPI(token)
+            devices = await api.get_devices()
+
+            if not devices:
+                errors["base"] = "auth_error"
+            else:
+                # Se o usuário não escolheu dispositivo ainda (primeira tela)
+                if not device_id:
+                    # Se só tem um ar-condicionado, seleciona automático
+                    ac_devices = {d['deviceId']: d['label'] for d in devices}
+                    
+                    if not ac_devices:
+                        errors["base"] = "no_devices"
+                    else:
+                        return self.async_show_form(
+                            step_id="device",
+                            data_schema=vol.Schema({
+                                vol.Required(CONF_TOKEN, default=token): str,
+                                vol.Required(CONF_DEVICE_ID): vol.In(ac_devices)
+                            }),
+                            errors=errors
+                        )
                 else:
-                    return await self.async_step_select_device()
-            except Exception:
-                errors["base"] = "cannot_connect"
+                    # Usuário já escolheu o dispositivo e token está ok
+                    # Cria a entrada
+                    await self.async_set_unique_id(device_id)
+                    self._abort_if_unique_id_configured()
+                    
+                    # Pega o nome do dispositivo para usar no título
+                    device_name = next((d['label'] for d in devices if d['deviceId'] == device_id), "Samsung AC")
+                    
+                    return self.async_create_entry(
+                        title=device_name,
+                        data={
+                            CONF_TOKEN: token,
+                            CONF_DEVICE_ID: device_id
+                        }
+                    )
 
         return self.async_show_form(
-            step_id="token",
-            data_schema=vol.Schema({vol.Required(CONF_TOKEN): str}),
-            errors=errors,
+            step_id="user",
+            data_schema=vol.Schema({
+                vol.Required(CONF_TOKEN): str
+            }),
+            errors=errors
         )
 
-    async def async_step_select_device(self, user_input=None):
+    async def async_step_device(self, user_input=None):
+        """Segunda etapa: confirmar dispositivo se necessário."""
+        # Reutiliza a lógica do step_user pois ele trata ambos os casos
+        return await self.async_step_user(user_input)
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return SamsungACOptionsFlowHandler(config_entry)
+
+
+class SamsungACOptionsFlowHandler(config_entries.OptionsFlow):
+    """Permite alterar o Token sem reinstalar."""
+
+    def __init__(self, config_entry):
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Gerencia as opções."""
+        errors = {}
+        
+        # Valor atual do token
+        current_token = self.config_entry.data.get(CONF_TOKEN, "")
+
         if user_input is not None:
-            device_id = user_input[CONF_DEVICE]
-            device_name = self._devices[device_id]
-            await self.async_set_unique_id(device_id)
-            self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=f"{device_name}", 
-                data={
-                    CONF_TOKEN: self._token,
-                    CONF_DEVICE_ID: device_id,
-                    CONF_DEVICE_NAME: device_name,
-                },
-            )
+            new_token = user_input.get(CONF_TOKEN)
+            
+            # Testa o novo token
+            api = SmartThingsAPI(new_token)
+            devices = await api.get_devices()
+            
+            if not devices:
+                errors["base"] = "auth_error"
+            else:
+                # Atualiza a entrada de configuração com o novo token
+                # Nota: ID do dispositivo mantido, só trocamos a credencial
+                new_data = self.config_entry.data.copy()
+                new_data[CONF_TOKEN] = new_token
+                
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, 
+                    data=new_data
+                )
+                
+                # Recarrega a integração para aplicar
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                return self.async_create_entry(title="", data={})
+
         return self.async_show_form(
-            step_id="select_device",
-            data_schema=vol.Schema({vol.Required(CONF_DEVICE): vol.In(self._devices)}),
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required(CONF_TOKEN, default=current_token): str,
+            }),
+            errors=errors
         )
